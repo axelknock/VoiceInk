@@ -16,15 +16,27 @@ class LicenseViewModel: ObservableObject {
     @Published private(set) var activationsLimit: Int = 0
 
     private let trialPeriodDays = 7
+    private let isLicenseEnforcementEnabled = false
     private let polarService = PolarService()
     private let userDefaults = UserDefaults.standard
     private let licenseManager = LicenseManager.shared
 
     init() {
+        if !isLicenseEnforcementEnabled {
+            licenseState = .licensed
+            licenseKey = userDefaults.licenseKey ?? ""
+            activationsLimit = userDefaults.activationsLimit
+            return
+        }
         loadLicenseState()
     }
 
     func startTrial() {
+        guard isLicenseEnforcementEnabled else {
+            licenseState = .licensed
+            NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+            return
+        }
         // Only set trial start date if it hasn't been set before
         if licenseManager.trialStartDate == nil {
             licenseManager.trialStartDate = Date()
@@ -34,6 +46,12 @@ class LicenseViewModel: ObservableObject {
     }
 
     private func loadLicenseState() {
+        guard isLicenseEnforcementEnabled else {
+            licenseState = .licensed
+            licenseKey = userDefaults.licenseKey ?? ""
+            activationsLimit = userDefaults.activationsLimit
+            return
+        }
         // Check for existing license key
         if let storedLicenseKey = licenseManager.licenseKey {
             self.licenseKey = storedLicenseKey
@@ -72,6 +90,9 @@ class LicenseViewModel: ObservableObject {
     }
     
     var canUseApp: Bool {
+        if !isLicenseEnforcementEnabled {
+            return true
+        }
         switch licenseState {
         case .licensed, .trial:
             return true
@@ -87,6 +108,12 @@ class LicenseViewModel: ObservableObject {
     }
     
     func validateLicense() async {
+        if !isLicenseEnforcementEnabled {
+            licenseState = .licensed
+            validationMessage = "License activated successfully!"
+            NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+            return
+        }
         guard !licenseKey.isEmpty else {
             validationMessage = "Please enter a license key"
             return
@@ -172,6 +199,18 @@ class LicenseViewModel: ObservableObject {
     }
     
     func removeLicense() {
+        guard isLicenseEnforcementEnabled else {
+            userDefaults.licenseKey = nil
+            userDefaults.activationId = nil
+            userDefaults.activationsLimit = 0
+            licenseState = .licensed
+            licenseKey = ""
+            validationMessage = nil
+            activationsLimit = 0
+            NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+            return
+        }
+
         // Remove all license data from Keychain
         licenseManager.removeAll()
 
