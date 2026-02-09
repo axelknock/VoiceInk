@@ -24,7 +24,7 @@ class LicenseViewModel: ObservableObject {
     init() {
         if !isLicenseEnforcementEnabled {
             licenseState = .licensed
-            licenseKey = userDefaults.licenseKey ?? ""
+            licenseKey = licenseManager.licenseKey ?? ""
             activationsLimit = userDefaults.activationsLimit
             return
         }
@@ -48,7 +48,7 @@ class LicenseViewModel: ObservableObject {
     private func loadLicenseState() {
         guard isLicenseEnforcementEnabled else {
             licenseState = .licensed
-            licenseKey = userDefaults.licenseKey ?? ""
+            licenseKey = licenseManager.licenseKey ?? ""
             activationsLimit = userDefaults.activationsLimit
             return
         }
@@ -200,8 +200,8 @@ class LicenseViewModel: ObservableObject {
     
     func removeLicense() {
         guard isLicenseEnforcementEnabled else {
-            userDefaults.licenseKey = nil
-            userDefaults.activationId = nil
+            licenseManager.licenseKey = nil
+            licenseManager.activationId = nil
             userDefaults.activationsLimit = 0
             licenseState = .licensed
             licenseKey = ""
